@@ -6,4 +6,4 @@ The data is retrieved from the Civil IoT FROST server. Update `API_BASE` in `pub
 
 ## Usage
 
-Open `public/index.html` in a browser. The page requires internet access to load map tiles and query the Civil IoT API.
+Open `index.html` or `public/index.html` in a browser. The page requires internet access to load map tiles and query the Civil IoT API.
