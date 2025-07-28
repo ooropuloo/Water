@@ -23,14 +23,15 @@ document.getElementById('locate-btn').addEventListener('click', () => {
 
 function fetchNearbySensors(lat, lon) {
   const radius = 5000; // 5 km
-  const url = `${API_BASE}/Things?$filter=st_distance(Locations/location, geography'POINT(${lon} ${lat})')%20lt%20${radius}&$expand=Datastreams($top=1;$orderby=phenomenonTime%20desc),Locations`;
+  const filter = `st_distance(Locations/location, geography'POINT(${lon} ${lat})') lt ${radius}`;
+  const url = `${API_BASE}/Things?$filter=${encodeURIComponent(filter)}&$expand=Datastreams($top=1;$orderby=phenomenonTime%20desc),Locations`;
   fetch(url)
     .then(res => res.json())
     .then(data => {
       (data.value || []).forEach(thing => {
         const loc = thing.Locations[0];
         if (!loc) return;
-        const coords = loc.location.coordinates.reverse(); // [lat, lon]
+        const coords = [loc.location.coordinates[1], loc.location.coordinates[0]]; // [lat, lon]
         const datastream = thing.Datastreams[0];
         if (!datastream) return;
 
