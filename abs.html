@@ -111,7 +111,7 @@
             <h3>📊 系統狀態</h3>
             <div id="wheelSpeed" class="status-item"><strong>輪速:</strong> <span>60 km/h</span></div>
             <div id="slipRatio" class="status-item"><strong>滑移率:</strong> <span>0%</span></div>
-            <div id="brakePresure" class="status-item"><strong>煞車壓力:</strong> <span>0 bar</span></div>
+            <div id="brakePressure" class="status-item"><strong>煞車壓力:</strong> <span>0 bar</span></div>
             <div id="absStatus" class="status-item"><strong>ABS狀態:</strong> <span>待機中</span></div>
             <div id="roadFriction" class="status-item"><strong>路面摩擦係數:</strong> <span>0.8</span></div>
         </div>
@@ -127,7 +127,7 @@
         let brakeForce = 0;
         let slipRatio = 0;
         let roadFriction = 0.8;
-        let brakePresure = 0;
+        let brakePressure = 0;
         let targetSpeed = 60;
         let carPosition = 0;
         let wheelRotation = 0;
@@ -283,7 +283,7 @@
                     const pulseFreq = 10;
                     const time = Date.now() / 1000;
                     const pulse = 0.5 + 0.5 * Math.sin(time * pulseFreq * 2 * Math.PI);
-                    brakePresure = brakeForce * pulse;
+                    brakePressure = brakeForce * pulse;
                     const targetSlipRatio = absThreshold[currentRoadCondition] * 0.8;
                     wheelSpeed = vehicleSpeed * (1 - targetSlipRatio);
                 } else {
@@ -298,13 +298,13 @@
                     } else {
                         actualDeceleration = requestedDeceleration;
                         wheelSpeed = potentialWheelSpeed_mps * 3.6;
-                        brakePresure = brakeForce;
+                        brakePressure = brakeForce;
                     }
                 }
                 const v_mps = Math.max(0, vehicleSpeed / 3.6 - actualDeceleration * deltaTime);
                 vehicleSpeed = v_mps * 3.6;
             } else {
-                brakePresure = 0;
+                brakePressure = 0;
                 wheelSpeed = vehicleSpeed;
                 if (isABSActive) {
                     isABSActive = false;
@@ -386,7 +386,7 @@
         function updateUI() {
             document.getElementById('wheelSpeed').querySelector('span').textContent = wheelSpeed.toFixed(1) + ' km/h';
             document.getElementById('slipRatio').querySelector('span').textContent = (slipRatio * 100).toFixed(1) + '%';
-            document.getElementById('brakePresure').querySelector('span').textContent = brakePresure.toFixed(1) + ' bar';
+            document.getElementById('brakePressure').querySelector('span').textContent = brakePressure.toFixed(1) + ' bar';
             document.getElementById('roadFriction').querySelector('span').textContent = roadFriction.toFixed(1);
             document.getElementById('phase-indicator').textContent = phases[currentPhase];
             const absStatusEl = document.getElementById('absStatus');
@@ -465,7 +465,7 @@
                 wheelSpeed = 60;
                 brakeForce = 0;
                 slipRatio = 0;
-                brakePresure = 0;
+                brakePressure = 0;
                 isABSActive = false;
                 currentPhase = 0;
                 carPosition = 0;
