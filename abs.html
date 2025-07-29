@@ -1,0 +1,503 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>ABS防鎖死煞車系統3D演示</title>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background: linear-gradient(135deg, #1e3c72, #2a5298);
+            font-family: 'Microsoft JhengHei', Arial, sans-serif;
+            overflow: hidden;
+        }
+        #container {
+            position: relative;
+            width: 100vw;
+            height: 100vh;
+        }
+        #controls {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+            max-width: 300px;
+        }
+        #info {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 20px;
+            border-radius: 10px;
+            z-index: 100;
+            max-width: 350px;
+            font-size: 14px;
+        }
+        button {
+            background: #3498db;
+            color: white;
+            border: none;
+            padding: 10px 15px;
+            margin: 5px;
+            border-radius: 5px;
+            cursor: pointer;
+            font-size: 14px;
+        }
+        button:hover { background: #2980b9; }
+        button.active { background: #e74c3c; }
+        .status-item {
+            margin: 8px 0;
+            padding: 8px;
+            background: rgba(255, 255, 255, 0.1);
+            border-radius: 5px;
+            border-left: 4px solid #3498db;
+        }
+        .status-warning { border-left-color: #f39c12; }
+        .status-danger { border-left-color: #e74c3c; }
+        .slider-container { margin: 10px 0; }
+        .slider-container label { display: block; margin-bottom: 5px; }
+        input[type="range"] { width: 100%; }
+        #phase-indicator {
+            position: absolute;
+            bottom: 20px;
+            left: 50%;
+            transform: translateX(-50%);
+            background: rgba(0, 0, 0, 0.8);
+            color: white;
+            padding: 15px 30px;
+            border-radius: 25px;
+            z-index: 100;
+            font-size: 16px;
+            font-weight: bold;
+        }
+    </style>
+</head>
+<body>
+    <div id="container">
+        <div id="controls">
+            <h3>🚗 ABS系統控制</h3>
+            <button id="startBtn">啟動ABS演示</button>
+            <button id="resetBtn">重置系統</button>
+            <div class="slider-container">
+                <label>車速: <span id="speedValue">60</span> km/h</label>
+                <input type="range" id="speedSlider" min="0" max="120" value="60">
+            </div>
+            <div class="slider-container">
+                <label>目標速度: <span id="targetSpeedValue">60</span> km/h</label>
+                <input type="range" id="targetSpeedSlider" min="0" max="120" value="60">
+            </div>
+            <div class="slider-container">
+                <label>路面條件:</label>
+                <select id="roadCondition">
+                    <option value="dry">乾燥路面 (μ=0.8)</option>
+                    <option value="wet">濕滑路面 (μ=0.5)</option>
+                    <option value="ice">冰雪路面 (μ=0.2)</option>
+                </select>
+            </div>
+            <div class="slider-container">
+                <label>煞車力道: <span id="brakeValue">0</span>%</label>
+                <input type="range" id="brakeSlider" min="0" max="100" value="0">
+            </div>
+        </div>
+        <div id="info">
+            <h3>📊 系統狀態</h3>
+            <div id="wheelSpeed" class="status-item"><strong>輪速:</strong> <span>60 km/h</span></div>
+            <div id="slipRatio" class="status-item"><strong>滑移率:</strong> <span>0%</span></div>
+            <div id="brakePresure" class="status-item"><strong>煞車壓力:</strong> <span>0 bar</span></div>
+            <div id="absStatus" class="status-item"><strong>ABS狀態:</strong> <span>待機中</span></div>
+            <div id="roadFriction" class="status-item"><strong>路面摩擦係數:</strong> <span>0.8</span></div>
+        </div>
+        <div id="phase-indicator">系統初始化完成</div>
+    </div>
+    <script>
+        let scene, camera, renderer, car, wheels = [], absSystem;
+        let isABSActive = false;
+        let currentPhase = 0;
+        let animationId;
+        let vehicleSpeed = 60;
+        let wheelSpeed = 60;
+        let brakeForce = 0;
+        let slipRatio = 0;
+        let roadFriction = 0.8;
+        let brakePresure = 0;
+        let targetSpeed = 60;
+        let carPosition = 0;
+        let wheelRotation = 0;
+        let isMoving = false;
+        const absThreshold = { dry: 0.15, wet: 0.10, ice: 0.05 };
+        let currentRoadCondition = 'dry';
+        const phases = [
+            '系統初始化完成',
+            '監控輪速中...',
+            '計算滑移率中...',
+            '檢測到滑移！推估路面摩擦力...',
+            '設定滑差門檻中...',
+            'ABS啟動！調節煞車壓力...',
+            '恢復正常壓力中...',
+            '循環監控中...'
+        ];
+
+        function initScene() {
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0x87CEEB);
+            camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+            camera.position.set(8, 6, 8);
+            camera.lookAt(0, 0, 0);
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(window.innerWidth, window.innerHeight);
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.getElementById('container').appendChild(renderer.domElement);
+            const ambientLight = new THREE.AmbientLight(0x404040, 0.6);
+            scene.add(ambientLight);
+            const directionalLight = new THREE.DirectionalLight(0xffffff, 1);
+            directionalLight.position.set(10, 10, 5);
+            directionalLight.castShadow = true;
+            directionalLight.shadow.mapSize.width = 2048;
+            directionalLight.shadow.mapSize.height = 2048;
+            scene.add(directionalLight);
+            const roadSegments = [];
+            for (let i = 0; i < 10; i++) {
+                const groundGeometry = new THREE.PlaneGeometry(200, 20);
+                const groundMaterial = new THREE.MeshLambertMaterial({ color: 0x555555, transparent: true, opacity: 0.8 });
+                const ground = new THREE.Mesh(groundGeometry, groundMaterial);
+                ground.rotation.x = -Math.PI / 2;
+                ground.position.x = i * 200 - 500;
+                ground.receiveShadow = true;
+                scene.add(ground);
+                roadSegments.push(ground);
+            }
+            const roadLines = [];
+            for (let i = -500; i < 1500; i += 4) {
+                const lineGeometry = new THREE.PlaneGeometry(2, 0.2);
+                const lineMaterial = new THREE.MeshLambertMaterial({ color: 0xffffff });
+                const line = new THREE.Mesh(lineGeometry, lineMaterial);
+                line.rotation.x = -Math.PI / 2;
+                line.position.set(i, 0.01, 0);
+                scene.add(line);
+                roadLines.push(line);
+            }
+            window.roadSegments = roadSegments;
+            window.roadLines = roadLines;
+            createVehicle();
+            createABSSystem();
+        }
+
+        function createVehicle() {
+            const carGroup = new THREE.Group();
+            const bodyGeometry = new THREE.BoxGeometry(4, 1.5, 2);
+            const bodyMaterial = new THREE.MeshLambertMaterial({ color: 0x3498db });
+            const body = new THREE.Mesh(bodyGeometry, bodyMaterial);
+            body.position.y = 1.5;
+            body.castShadow = true;
+            carGroup.add(body);
+            const roofGeometry = new THREE.BoxGeometry(2.5, 1, 1.8);
+            const roofMaterial = new THREE.MeshLambertMaterial({ color: 0x2980b9 });
+            const roof = new THREE.Mesh(roofGeometry, roofMaterial);
+            roof.position.set(0, 2.5, 0);
+            roof.castShadow = true;
+            carGroup.add(roof);
+            const wheelPositions = [
+                { x: 1.5, z: 1.2 },
+                { x: 1.5, z: -1.2 },
+                { x: -1.5, z: 1.2 },
+                { x: -1.5, z: -1.2 }
+            ];
+            wheelPositions.forEach(pos => {
+                const wheelGeometry = new THREE.CylinderGeometry(0.4, 0.4, 0.3, 16);
+                const wheelMaterial = new THREE.MeshLambertMaterial({ color: 0x333333 });
+                const wheel = new THREE.Mesh(wheelGeometry, wheelMaterial);
+                wheel.position.set(pos.x, 0.4, pos.z);
+                wheel.rotation.z = Math.PI / 2;
+                wheel.castShadow = true;
+                wheels.push(wheel);
+                carGroup.add(wheel);
+                const discGeometry = new THREE.CylinderGeometry(0.35, 0.35, 0.05, 16);
+                const discMaterial = new THREE.MeshLambertMaterial({ color: 0x8B4513 });
+                const disc = new THREE.Mesh(discGeometry, discMaterial);
+                disc.position.set(pos.x, 0.4, pos.z);
+                disc.rotation.z = Math.PI / 2;
+                carGroup.add(disc);
+                const caliperGeometry = new THREE.BoxGeometry(0.2, 0.3, 0.15);
+                const caliperMaterial = new THREE.MeshLambertMaterial({ color: 0xe74c3c });
+                const caliper = new THREE.Mesh(caliperGeometry, caliperMaterial);
+                caliper.position.set(pos.x, 0.4, pos.z + 0.25);
+                carGroup.add(caliper);
+            });
+            car = carGroup;
+            scene.add(car);
+        }
+
+        function createABSSystem() {
+            const absGroup = new THREE.Group();
+            const ecuGeometry = new THREE.BoxGeometry(0.8, 0.3, 0.6);
+            const ecuMaterial = new THREE.MeshLambertMaterial({ color: 0x2c3e50 });
+            const ecu = new THREE.Mesh(ecuGeometry, ecuMaterial);
+            ecu.position.set(0, 3.5, 0);
+            absGroup.add(ecu);
+            const lineMaterial = new THREE.LineBasicMaterial({ color: 0xf39c12 });
+            wheels.forEach(wheel => {
+                const points = [new THREE.Vector3(wheel.position.x, wheel.position.y, wheel.position.z), new THREE.Vector3(0, 3.5, 0)];
+                const geometry = new THREE.BufferGeometry().setFromPoints(points);
+                const line = new THREE.Line(geometry, lineMaterial);
+                absGroup.add(line);
+            });
+            absSystem = absGroup;
+            scene.add(absSystem);
+        }
+
+        function updateSystem() {
+            const deltaTime = 0.016;
+            if (vehicleSpeed > 0) {
+                isMoving = true;
+                carPosition += (vehicleSpeed / 3.6) * deltaTime;
+                car.position.x = carPosition;
+                wheelRotation += (wheelSpeed / 3.6) * deltaTime / 0.4;
+                if (window.roadSegments) {
+                    window.roadSegments.forEach(segment => {
+                        if (segment.position.x < carPosition - 600) segment.position.x += 2000;
+                    });
+                }
+                if (window.roadLines) {
+                    window.roadLines.forEach(line => {
+                        if (line.position.x < carPosition - 600) line.position.x += 2000;
+                    });
+                }
+            } else {
+                isMoving = false;
+            }
+            if (brakeForce > 0) {
+                const baseBrakeForce = brakeForce / 100;
+                const maxDeceleration = roadFriction * 9.8;
+                let actualDeceleration;
+                if (isABSActive) {
+                    actualDeceleration = maxDeceleration * 0.85;
+                    const pulseFreq = 10;
+                    const time = Date.now() / 1000;
+                    const pulse = 0.5 + 0.5 * Math.sin(time * pulseFreq * 2 * Math.PI);
+                    brakePresure = brakeForce * pulse;
+                    const targetSlipRatio = absThreshold[currentRoadCondition] * 0.8;
+                    wheelSpeed = vehicleSpeed * (1 - targetSlipRatio);
+                } else {
+                    const requestedDeceleration = baseBrakeForce * maxDeceleration;
+                    const v_mps = vehicleSpeed / 3.6;
+                    const potentialWheelSpeed_mps = v_mps - requestedDeceleration * deltaTime;
+                    const potentialSlipRatio = v_mps > 0 ? Math.max(0, (v_mps - potentialWheelSpeed_mps) / v_mps) : 0;
+                    if (potentialSlipRatio > absThreshold[currentRoadCondition]) {
+                        isABSActive = true;
+                        currentPhase = 5;
+                        actualDeceleration = maxDeceleration * 0.85;
+                    } else {
+                        actualDeceleration = requestedDeceleration;
+                        wheelSpeed = potentialWheelSpeed_mps * 3.6;
+                        brakePresure = brakeForce;
+                    }
+                }
+                const v_mps = Math.max(0, vehicleSpeed / 3.6 - actualDeceleration * deltaTime);
+                vehicleSpeed = v_mps * 3.6;
+            } else {
+                brakePresure = 0;
+                wheelSpeed = vehicleSpeed;
+                if (isABSActive) {
+                    isABSActive = false;
+                    currentPhase = 6;
+                }
+                const speedDiff = targetSpeed - vehicleSpeed;
+                if (Math.abs(speedDiff) > 1) {
+                    if (speedDiff > 0) vehicleSpeed = Math.min(targetSpeed, vehicleSpeed + 1.0);
+                    else vehicleSpeed = Math.max(targetSpeed, vehicleSpeed - 0.5);
+                }
+                if (vehicleSpeed > 0) vehicleSpeed = Math.max(0, vehicleSpeed - 0.05);
+            }
+            slipRatio = vehicleSpeed > 0 ? Math.max(0, (vehicleSpeed - wheelSpeed) / vehicleSpeed) : 0;
+            updatePhase();
+        }
+
+        function updatePhase() {
+            if (brakeForce === 0) currentPhase = 1;
+            else if (slipRatio < 0.05) currentPhase = 2;
+            else if (slipRatio > 0.05 && !isABSActive) currentPhase = 3;
+            else if (isABSActive) currentPhase = 5;
+        }
+
+        function updateVisuals() {
+            wheels.forEach(wheel => {
+                wheel.rotation.x = wheelRotation;
+                if (isABSActive) wheel.rotation.x += Math.sin(Date.now() * 0.02) * 0.2;
+                if (brakeForce > 50) {
+                    const heatIntensity = brakeForce / 100;
+                    wheel.material.emissive.setHex(Math.floor(heatIntensity * 0x331100));
+                } else wheel.material.emissive.setHex(0x000000);
+            });
+            if (isABSActive) {
+                const vibration = Math.sin(Date.now() * 0.05) * 0.02;
+                car.position.y = vibration;
+                car.rotation.z = Math.sin(Date.now() * 0.03) * 0.01;
+            } else {
+                car.position.y = 0;
+                car.rotation.z = 0;
+            }
+            if (isABSActive) {
+                const intensity = 0.5 + 0.5 * Math.sin(Date.now() * 0.01);
+                absSystem.children[0].material.color.setHex(0xe74c3c);
+                absSystem.children[0].material.emissive.setHex(Math.floor(intensity * 0x440000));
+                for (let i = 1; i < absSystem.children.length; i++) {
+                    if (absSystem.children[i].type === 'Line') {
+                        absSystem.children[i].material.color.setHex(intensity > 0.7 ? 0xff0000 : 0xf39c12);
+                    }
+                }
+            } else {
+                absSystem.children[0].material.color.setHex(0x2c3e50);
+                absSystem.children[0].material.emissive.setHex(0x000000);
+                for (let i = 1; i < absSystem.children.length; i++) {
+                    if (absSystem.children[i].type === 'Line') {
+                        absSystem.children[i].material.color.setHex(0xf39c12);
+                    }
+                }
+            }
+            absSystem.position.x = car.position.x;
+            if (brakeForce > 30) {
+                const glowIntensity = brakeForce / 100;
+                scene.children.forEach(child => {
+                    if (child.material && child.material.color.getHex() === 0x8B4513) {
+                        child.material.emissive.setHex(Math.floor(glowIntensity * 0x331100));
+                    }
+                });
+            }
+            if (slipRatio > 0.3 && isMoving) {
+                const skidMarkGeometry = new THREE.PlaneGeometry(0.1, 2);
+                const skidMarkMaterial = new THREE.MeshLambertMaterial({ color: 0x222222, transparent: true, opacity: 0.6 });
+                const skidMark = new THREE.Mesh(skidMarkGeometry, skidMarkMaterial);
+                skidMark.rotation.x = -Math.PI / 2;
+                skidMark.position.set(car.position.x - 1, 0.005, 1.2);
+                scene.add(skidMark);
+                setTimeout(() => { scene.remove(skidMark); }, 5000);
+            }
+        }
+
+        function updateUI() {
+            document.getElementById('wheelSpeed').querySelector('span').textContent = wheelSpeed.toFixed(1) + ' km/h';
+            document.getElementById('slipRatio').querySelector('span').textContent = (slipRatio * 100).toFixed(1) + '%';
+            document.getElementById('brakePresure').querySelector('span').textContent = brakePresure.toFixed(1) + ' bar';
+            document.getElementById('roadFriction').querySelector('span').textContent = roadFriction.toFixed(1);
+            document.getElementById('phase-indicator').textContent = phases[currentPhase];
+            const absStatusEl = document.getElementById('absStatus');
+            if (isABSActive) {
+                absStatusEl.querySelector('span').textContent = '啟動中';
+                absStatusEl.className = 'status-item status-danger';
+            } else if (slipRatio > 0.1) {
+                absStatusEl.querySelector('span').textContent = '準備中';
+                absStatusEl.className = 'status-item status-warning';
+            } else {
+                absStatusEl.querySelector('span').textContent = '待機中';
+                absStatusEl.className = 'status-item';
+            }
+            const slipEl = document.getElementById('slipRatio');
+            if (slipRatio > absThreshold[currentRoadCondition]) slipEl.className = 'status-item status-danger';
+            else if (slipRatio > 0.05) slipEl.className = 'status-item status-warning';
+            else slipEl.className = 'status-item';
+        }
+
+        function animate() {
+            animationId = requestAnimationFrame(animate);
+            updateSystem();
+            updateVisuals();
+            updateUI();
+            const followCar = true;
+            if (followCar && isMoving) {
+                camera.position.x = car.position.x + 8;
+                camera.position.y = 6;
+                camera.position.z = 8;
+                camera.lookAt(car.position.x, 1, 0);
+            } else {
+                const time = Date.now() * 0.0005;
+                camera.position.x = car.position.x + Math.cos(time) * 8;
+                camera.position.z = Math.sin(time) * 8;
+                camera.lookAt(car.position.x, 1, 0);
+            }
+            renderer.render(scene, camera);
+        }
+
+        function setupEventListeners() {
+            document.getElementById('speedSlider').addEventListener('input', e => {
+                vehicleSpeed = parseFloat(e.target.value);
+                wheelSpeed = vehicleSpeed;
+                document.getElementById('speedValue').textContent = vehicleSpeed;
+            });
+            document.getElementById('targetSpeedSlider').addEventListener('input', e => {
+                targetSpeed = parseFloat(e.target.value);
+                document.getElementById('targetSpeedValue').textContent = targetSpeed;
+            });
+            document.getElementById('brakeSlider').addEventListener('input', e => {
+                brakeForce = parseFloat(e.target.value);
+                document.getElementById('brakeValue').textContent = brakeForce;
+            });
+            document.getElementById('roadCondition').addEventListener('change', e => {
+                currentRoadCondition = e.target.value;
+                switch (currentRoadCondition) {
+                    case 'dry': roadFriction = 0.8; break;
+                    case 'wet': roadFriction = 0.5; break;
+                    case 'ice': roadFriction = 0.2; break;
+                }
+            });
+            document.getElementById('startBtn').addEventListener('click', () => {
+                const btn = document.getElementById('startBtn');
+                if (btn.textContent === '啟動ABS演示') {
+                    btn.textContent = '停止演示';
+                    btn.classList.add('active');
+                    animate();
+                } else {
+                    btn.textContent = '啟動ABS演示';
+                    btn.classList.remove('active');
+                    cancelAnimationFrame(animationId);
+                }
+            });
+            document.getElementById('resetBtn').addEventListener('click', () => {
+                vehicleSpeed = 60;
+                wheelSpeed = 60;
+                brakeForce = 0;
+                slipRatio = 0;
+                brakePresure = 0;
+                isABSActive = false;
+                currentPhase = 0;
+                carPosition = 0;
+                wheelRotation = 0;
+                targetSpeed = 60;
+                car.position.x = 0;
+                car.position.y = 0;
+                car.rotation.z = 0;
+                document.getElementById('speedSlider').value = 60;
+                document.getElementById('targetSpeedSlider').value = 60;
+                document.getElementById('brakeSlider').value = 0;
+                document.getElementById('speedValue').textContent = 60;
+                document.getElementById('targetSpeedValue').textContent = 60;
+                document.getElementById('brakeValue').textContent = 0;
+                document.getElementById('roadCondition').value = 'dry';
+                roadFriction = 0.8;
+                currentRoadCondition = 'dry';
+            });
+            window.addEventListener('resize', () => {
+                camera.aspect = window.innerWidth / window.innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(window.innerWidth, window.innerHeight);
+            });
+        }
+
+        function init() {
+            initScene();
+            setupEventListeners();
+            updateUI();
+        }
+
+        init();
+    </script>
+</body>
+</html>
