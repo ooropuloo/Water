@@ -1,0 +1,39 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>3D Factory Demo</title>
+  <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+  <link rel="stylesheet" href="public/factory.css" />
+</head>
+<body>
+  <div id="wrapper">
+    <div id="grafana">
+      <iframe id="grafanaFrame" src="https://play.grafana.org/d-solo/000000012/grafana-play-home?orgId=1&from=now-6h&to=now&panelId=2" frameborder="0"></iframe>
+    </div>
+    <div id="scene-container"></div>
+    <div id="chat">
+      <div id="messages"></div>
+      <input id="userInput" placeholder="輸入訊息" />
+      <div class="chat-buttons">
+        <button id="sendBtn">送出</button>
+        <button id="settingsBtn">設定</button>
+      </div>
+    </div>
+  </div>
+  <div id="settingsModal" class="modal hidden">
+    <div class="modal-content">
+      <h3>設定 API 金鑰</h3>
+      <label>Grafana Token <input id="grafanaToken" /></label>
+      <label>InfluxDB Key <input id="influxKey" /></label>
+      <label>LLM API Key <input id="llmKey" /></label>
+      <div class="chat-buttons">
+        <button id="saveSettings">儲存</button>
+        <button id="closeSettings">關閉</button>
+      </div>
+    </div>
+  </div>
+  <script src="public/factory.js"></script>
+</body>
+</html>
