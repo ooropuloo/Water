@@ -1,0 +1,14 @@
+{
+  "name": "water",
+  "version": "1.0.0",
+  "description": "Water Level map and prototype graph server",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "test": "node server.js & sleep 1 && kill $!"
+  },
+  "keywords": [],
+  "author": "",
+  "license": "ISC",
+  "type": "commonjs"
+}
