@@ -1,0 +1,163 @@
+{
+  "name": "YOLO Report Flow",
+  "nodes": [
+    {
+      "parameters": {
+        "path": "yolo",
+        "responseMode": "responseNode",
+        "options": {
+          "rawBody": true
+        }
+      },
+      "id": "Webhook",
+      "name": "Webhook",
+      "type": "n8n-nodes-base.webhook",
+      "typeVersion": 1,
+      "position": [200, 300]
+    },
+    {
+      "parameters": {
+        "systemInstruction": "You are an AI agent helping to run YOLO detection and training. Decide if training is needed and provide YOLO parameters.",
+        "model": "gpt-4o-mini",
+        "prompt": "{{JSON.stringify($json)}}"
+      },
+      "id": "AI Agent",
+      "name": "AI Agent",
+      "type": "n8n-nodes-base.aiAgent",
+      "typeVersion": 1,
+      "position": [400, 300]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "boolean": [
+            {
+              "value1": "={{$json.training}}"
+            }
+          ]
+        }
+      },
+      "id": "Train?",
+      "name": "Train?",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 1,
+      "position": [600, 300]
+    },
+    {
+      "parameters": {
+        "command": "python train_yolo.py --data {{$json.folder}} --classes {{$json.classes}}"
+      },
+      "id": "YOLO Train",
+      "name": "YOLO Train",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [800, 200]
+    },
+    {
+      "parameters": {
+        "command": "python detect_yolo.py --data {{$json.folder}} --classes {{$json.classes}} --weights {{$json.weights}} --output output"
+      },
+      "id": "YOLO Detect",
+      "name": "YOLO Detect",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [800, 400]
+    },
+    {
+      "parameters": {
+        "command": "python report.py --input output --chart chart.png --md report.md"
+      },
+      "id": "Generate Report",
+      "name": "Generate Report",
+      "type": "n8n-nodes-base.executeCommand",
+      "typeVersion": 1,
+      "position": [1000, 400]
+    },
+    {
+      "parameters": {
+        "responseMode": "lastNode",
+        "options": {}
+      },
+      "id": "Respond",
+      "name": "Respond",
+      "type": "n8n-nodes-base.respondToWebhook",
+      "typeVersion": 1,
+      "position": [1200, 400]
+    }
+  ],
+  "connections": {
+    "Webhook": {
+      "main": [
+        [
+          {
+            "node": "AI Agent",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "AI Agent": {
+      "main": [
+        [
+          {
+            "node": "Train?",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Train?": {
+      "main": [
+        [
+          {
+            "node": "YOLO Train",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "YOLO Detect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YOLO Train": {
+      "main": [
+        [
+          {
+            "node": "YOLO Detect",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "YOLO Detect": {
+      "main": [
+        [
+          {
+            "node": "Generate Report",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Generate Report": {
+      "main": [
+        [
+          {
+            "node": "Respond",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  }
+}
