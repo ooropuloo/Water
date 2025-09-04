@@ -1,0 +1,12 @@
+{
+  "nodes": [
+    {"id": "1", "label": "Alice", "type": "Person"},
+    {"id": "2", "label": "Bob", "type": "Person"},
+    {"id": "3", "label": "ACME Corp", "type": "Organization"}
+  ],
+  "edges": [
+    {"id": "e1", "source": "1", "target": "3", "label": "works_at"},
+    {"id": "e2", "source": "2", "target": "3", "label": "works_at"},
+    {"id": "e3", "source": "1", "target": "2", "label": "knows"}
+  ]
+}
