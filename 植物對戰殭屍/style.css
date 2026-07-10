@@ -1,0 +1,24 @@
+:root { color-scheme: dark; --panel: rgba(17, 35, 24, .82); --leaf: #7bed6f; --sun: #ffd166; }
+* { box-sizing: border-box; }
+body { margin: 0; min-height: 100vh; font-family: system-ui, -apple-system, BlinkMacSystemFont, "Noto Sans TC", sans-serif; color: #f6fff3; background: radial-gradient(circle at top, #29583a, #0a1510 68%); }
+.shell { width: min(1180px, calc(100% - 32px)); margin: 0 auto; padding: 28px 0 40px; }
+.hero, .toolbar, .credits { border: 1px solid rgba(255,255,255,.14); background: var(--panel); backdrop-filter: blur(12px); box-shadow: 0 22px 60px rgba(0,0,0,.28); }
+.hero { display: flex; justify-content: space-between; gap: 28px; padding: 28px; border-radius: 28px; }
+.eyebrow { color: var(--leaf); font-weight: 800; letter-spacing: .12em; text-transform: uppercase; margin: 0 0 8px; }
+h1 { margin: 0; font-size: clamp(2.4rem, 7vw, 5.8rem); line-height: .95; text-shadow: 0 8px 0 rgba(0,0,0,.18); }
+.intro { max-width: 760px; color: #d7ead0; font-size: 1.08rem; line-height: 1.8; }
+.score-card { min-width: 180px; display: grid; grid-template-columns: 1fr auto; gap: 10px 18px; align-content: center; padding: 18px; border-radius: 22px; background: rgba(0,0,0,.24); }
+.score-card span { color: #bcd7b5; } .score-card strong { color: var(--sun); font-size: 1.45rem; }
+.toolbar { display: flex; flex-wrap: wrap; gap: 12px; margin: 18px 0; padding: 14px; border-radius: 22px; }
+button { border: 0; cursor: pointer; color: inherit; font: inherit; }
+.plant-card, .start { border-radius: 16px; padding: 13px 16px; background: rgba(255,255,255,.1); transition: .2s ease; }
+.plant-card { display: grid; gap: 3px; min-width: 190px; text-align: left; border: 1px solid transparent; }
+.plant-card span { font-weight: 850; } .plant-card small { color: #c9dcc4; }
+.plant-card.active, .plant-card:hover { background: rgba(123,237,111,.18); border-color: rgba(123,237,111,.7); transform: translateY(-2px); }
+.start { margin-left: auto; background: linear-gradient(135deg, #ffb703, #fb8500); color: #2a1600; font-weight: 900; }
+.game-wrap { position: relative; height: min(68vh, 720px); min-height: 520px; overflow: hidden; border-radius: 30px; border: 1px solid rgba(255,255,255,.16); background: #112b18; box-shadow: inset 0 0 80px rgba(0,0,0,.26), 0 30px 80px rgba(0,0,0,.35); }
+#game { width: 100%; height: 100%; display: block; }
+.message { position: absolute; left: 18px; bottom: 18px; max-width: calc(100% - 36px); padding: 12px 16px; border-radius: 999px; background: rgba(5,12,8,.72); border: 1px solid rgba(255,255,255,.14); color: #efffe9; }
+.credits { margin-top: 18px; padding: 18px 24px; border-radius: 22px; color: #dcefd7; }
+.credits h2 { margin-top: 0; } .credits li { margin: 8px 0; }
+@media (max-width: 760px) { .hero { flex-direction: column; } .start { margin-left: 0; width: 100%; } .game-wrap { min-height: 460px; } }

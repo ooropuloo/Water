@@ -1,0 +1,51 @@
+<!DOCTYPE html>
+<html lang="zh-Hant">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>植物對戰殭屍 3D</title>
+  <link rel="stylesheet" href="style.css" />
+</head>
+<body>
+  <main class="shell">
+    <section class="hero">
+      <div>
+        <p class="eyebrow">3D Tower Defense Web Game</p>
+        <h1>植物對戰殭屍</h1>
+        <p class="intro">在五條草坪戰線上種下豆豆砲、堅果盾與冰霜花，阻止殭屍闖進溫室。使用免費 3D 模型資源，並提供程式化備援模型，讓遊戲可直接在瀏覽器執行。</p>
+      </div>
+      <div class="score-card">
+        <span>陽光</span><strong id="sun">150</strong>
+        <span>分數</span><strong id="score">0</strong>
+        <span>波次</span><strong id="wave">1</strong>
+      </div>
+    </section>
+
+    <section class="toolbar" aria-label="植物選擇">
+      <button class="plant-card active" data-plant="pea"><span>豆豆砲</span><small>50 陽光｜遠距攻擊</small></button>
+      <button class="plant-card" data-plant="nut"><span>堅果盾</span><small>75 陽光｜高生命</small></button>
+      <button class="plant-card" data-plant="ice"><span>冰霜花</span><small>100 陽光｜緩速殭屍</small></button>
+      <button id="startBtn" class="start">開始下一波</button>
+    </section>
+
+    <section class="game-wrap">
+      <canvas id="game"></canvas>
+      <div id="message" class="message">點擊草坪格子種植。每 6 秒會掉落陽光。</div>
+    </section>
+
+    <section class="credits">
+      <h2>免費 3D 模型來源</h2>
+      <ul>
+        <li>植物角色以 Khronos glTF Sample Models 的 Avocado 模型為基礎載入，並在遊戲中改造成砲塔外觀。</li>
+        <li>殭屍角色以 Khronos glTF Sample Models 的 CesiumMan 模型為基礎載入，並套用綠色材質、搖晃與推進動畫。</li>
+        <li>若網路模型載入失敗，遊戲會自動切換為內建的低多邊形 3D 模型。</li>
+      </ul>
+    </section>
+  </main>
+
+  <script type="importmap">
+    { "imports": { "three": "https://unpkg.com/three@0.164.1/build/three.module.js" } }
+  </script>
+  <script type="module" src="game.js"></script>
+</body>
+</html>
